@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Te amo Jade ❤️</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #000;
+}
+
+canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.container {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 25px;
+}
+
+.card {
+    width: min(90%, 420px);
+    padding: 30px 22px;
+    text-align: center;
+    border-radius: 25px;
+
+    background: rgba(20, 0, 0, 0.82);
+    border: 1px solid rgba(255, 40, 40, 0.45);
+
+    box-shadow:
+        0 0 30px rgba(255, 0, 0, 0.18),
+        inset 0 0 20px rgba(255, 0, 0, 0.05);
+
+    backdrop-filter: blur(10px);
+}
+
+h1 {
+    color: white;
+    font-size: 25px;
+    line-height: 1.35;
+    margin-bottom: 28px;
+}
+
+.buttons {
+    position: relative;
+    min-height: 65px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+}
+
+button {
+    border: none;
+    border-radius: 14px;
+    padding: 14px 28px;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+#yes {
+    color: white;
+    background: #e91e3f;
+    box-shadow: 0 0 18px rgba(255, 0, 50, 0.35);
+}
+
+#yes:active {
+    transform: scale(0.94);
+}
+
+#no {
+    color: white;
+    background: #333;
+    position: relative;
+}
+
+.message {
+    position: fixed;
+    left: 50%;
+    top: 15%;
+    transform: translateX(-50%);
+
+    color: white;
+    background: rgba(30, 0, 0, 0.9);
+
+    border: 1px solid rgba(255, 50, 50, 0.5);
+    border-radius: 12px;
+
+    padding: 12px 18px;
+    font-size: 16px;
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition: opacity 0.25s;
+    white-space: nowrap;
+}
+
+.message.show {
+    opacity: 1;
+}
+
+.success {
+    display: none;
+    color: white;
+}
+
+.success h2 {
+    font-size: 30px;
+    margin-bottom: 15px;
+}
+
+.success p {
+    font-size: 17px;
+    line-height: 1.6;
+    color: #eee;
+}
+
+.heart {
+    font-size: 65px;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.15);
+    }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="container">
+
+    <div class="card" id="questionCard">
+
+        <h1>
+            Você deixa eu ficar bem pertinho de você,
+            agarradinho, até você mandar eu parar? 😏❤️
+        </h1>
+
+        <div class="buttons">
+            <button id="yes">SIM ❤️</button>
+            <button id="no">NÃO</button>
+        </div>
+
+    </div>
+
+    <div class="card success" id="successCard">
+
+        <div class="heart">❤️</div>
+
+        <h2>EU SABIA! 😭❤️</h2>
+
+        <p>
+            Agora você não pode reclamar...
+            você que apertou o SIM. 😏❤️
+        </p>
+
+    </div>
+
+</div>
+
+<div class="message" id="message"></div>
+
+<script>
+
+/* ============================
+   CORAÇÃO ANIMADO
+============================ */
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+resize();
+
+window.addEventListener("resize", resize);
+
+function heart(t) {
+    return {
+        x: 16 * Math.sin(t) ** 3,
+        y:
+            13 * Math.cos(t)
+            - 5 * Math.cos(2 * t)
+            - 2 * Math.cos(3 * t)
+            - Math.cos(4 * t)
+    };
+}
+
+let progress = 0;
+
+function animateHeart() {
+
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    const scale =
+        Math.min(canvas.width, canvas.height) * 0.025;
+
+    const totalLines = 140;
+    const K = 2.1;
+
+    const visibleLines = Math.floor(progress);
+
+    for (let i = 0; i < visibleLines; i++) {
+
+        const angle =
+            (Math.PI * 2 * i) / totalLines;
+
+        const h = heart(angle);
+
+        const hx = cx + h.x * scale;
+        const hy = cy - h.y * scale;
+
+        const ex = cx + h.x * scale * K;
+        const ey = cy - h.y * scale * K;
+
+        const gradient =
+            ctx.createLinearGradient(hx, hy, ex, ey);
+
+        gradient.addColorStop(
+            0,
+            "rgba(255,40,30,1)"
+        );
+
+        gradient.addColorStop(
+            0.5,
+            "rgba(255,20,20,0.55)"
+        );
+
+        gradient.addColorStop(
+            1,
+            "rgba(255,0,0,0)"
+        );
+
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(ex, ey);
+
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }
+
+    progress += 0.45;
+
+    if (progress > totalLines + 100) {
+        progress = 0;
+    }
+
+    requestAnimationFrame(animateHeart);
+}
+
+animateHeart();
+
+
+/* ============================
+   BOTÃO NÃO
+============================ */
+
+const noButton = document.getElementById("no");
+const message = document.getElementById("message");
+
+const messages = [
+    "Tem certeza? 👀",
+    "Você realmente quer recusar? 😭",
+    "Pensa mais um pouquinho...",
+    "Certeza absoluta? 😳",
+    "Olha o SIM ali... ❤️",
+    "Ainda dá tempo de mudar de ideia 👀",
+    "Você vai mesmo apertar NÃO? 😭",
+    "Última chance... 😏",
+    "Eu acho que você está pensando errado 😂",
+    "Sério mesmo? ❤️"
+];
+
+let attempts = 0;
+
+function showMessage() {
+
+    message.textContent =
+        messages[attempts % messages.length];
+
+    message.classList.add("show");
+
+    clearTimeout(window.messageTimer);
+
+    window.messageTimer = setTimeout(() => {
+        message.classList.remove("show");
+    }, 1500);
+
+    attempts++;
+}
+
+function moveNoButton() {
+
+    showMessage();
+
+    const margin = 20;
+
+    const maxX =
+        window.innerWidth -
+        noButton.offsetWidth -
+        margin;
+
+    const maxY =
+        window.innerHeight -
+        noButton.offsetHeight -
+        margin;
+
+    const x =
+        margin +
+        Math.random() * Math.max(0, maxX - margin);
+
+    const y =
+        margin +
+        Math.random() * Math.max(0, maxY - margin);
+
+    noButton.style.position = "fixed";
+    noButton.style.left = `${x}px`;
+    noButton.style.top = `${y}px`;
+}
+
+/* Funciona no celular e no PC */
+noButton.addEventListener("mouseenter", moveNoButton);
+noButton.addEventListener("touchstart", (event) => {
+    event.preventDefault();
+    moveNoButton();
+});
+
+noButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    moveNoButton();
+});
+
+
+/* ============================
+   BOTÃO SIM
+============================ */
+
+const yesButton = document.getElementById("yes");
+const questionCard = document.getElementById("questionCard");
+const successCard = document.getElementById("successCard");
+
+yesButton.addEventListener("click", () => {
+
+    questionCard.style.display = "none";
+
+    successCard.style.display = "block";
+
+    message.classList.remove("show");
+
+    createConfetti();
+});
+
+
+/* ============================
+   CONFETES
+============================ */
+
+function createConfetti() {
+
+    for (let i = 0; i < 80; i++) {
+
+        const particle =
+            document.createElement("div");
+
+        particle.textContent =
+            Math.random() > 0.5 ? "❤️" : "✨";
+
+        particle.style.position = "fixed";
+        particle.style.left =
+            Math.random() * 100 + "vw";
+
+        particle.style.top = "-30px";
+
+        particle.style.fontSize =
+            (12 + Math.random() * 18) + "px";
+
+        particle.style.zIndex = "999";
+
+        particle.style.transition =
+            "transform 3s linear, opacity 3s";
+
+        document.body.appendChild(particle);
+
+        setTimeout(() => {
+
+            particle.style.transform =
+                `translateY(${window.innerHeight + 100}px)
+                 rotate(${Math.random() * 720}deg)`;
+
+            particle.style.opacity = "0";
+
+        }, 50);
+
+        setTimeout(() => {
+            particle.remove();
+        }, 3200);
+    }
+}
+
+</script>
+
+</body>
+</html>
