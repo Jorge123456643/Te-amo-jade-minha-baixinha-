@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>NEXUS — O Coração do Universo</title>
+<style>
+  :root{
+    --cyan:#5df2ff; --pink:#ff5d8f; --gold:#ffd27a;
+    --bg:#02040a; --glass:rgba(10,16,28,.55); --line:rgba(93,242,255,.35);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;background:var(--bg);overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;color:#eaf6ff;}
+  canvas{display:block;touch-action:none;}
+  #app{position:fixed;inset:0;}
+
+  /* ---------- HUD ---------- */
+  .glass{background:var(--glass);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px;box-shadow:0 0 25px rgba(93,242,255,.08), inset 0 0 20px rgba(93,242,255,.03);}
+  #topbar{position:fixed;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:20;gap:10px;flex-wrap:wrap;}
+  #brand{padding:10px 16px;pointer-events:auto;}
+  #brand b{color:var(--cyan);letter-spacing:2px;font-size:13px;}
+  #brand div{font-size:10px;color:#8fb8c9;margin-top:2px;}
+  #stat{padding:10px 16px;font-size:11px;line-height:1.6;pointer-events:auto;min-width:170px;}
+  #stat span{color:var(--cyan);}
+
+  #controls{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto;z-index:20;flex-wrap:wrap;justify-content:center;max-width:96vw;}
+  .btn{padding:10px 14px;font-size:12px;color:#eaf6ff;cursor:pointer;user-select:none;white-space:nowrap;transition:.2s;}
+  .btn:hover{background:rgba(93,242,255,.12);}
+  .btn.active{background:rgba(93,242,255,.22);color:var(--cyan);}
+
+  #speedwrap{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);padding:8px 16px;display:flex;align-items:center;gap:8px;font-size:11px;pointer-events:auto;z-index:20;}
+  #speed{width:110px;}
+
+  #quality{position:fixed;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:6px;padding:6px;pointer-events:auto;z-index:20;}
+  #quality .btn{padding:6px 10px;font-size:10px;}
+
+  #infoPanel{position:fixed;top:70px;right:14px;width:270px;padding:16px;display:none;z-index:20;pointer-events:auto;max-height:70vh;overflow:auto;}
+  #infoPanel h2{margin:0 0 4px;color:var(--cyan);font-size:16px;letter-spacing:1px;}
+  #infoPanel .row{display:flex;justify-content:space-between;font-size:11.5px;padding:5px 0;border-bottom:1px solid rgba(93,242,255,.12);color:#cfe9f2;}
+  #infoPanel .row b{color:#fff;font-weight:600;}
+  #infoPanel .curio{margin-top:10px;font-size:11.5px;color:#9fd6e5;line-height:1.5;font-style:italic;}
+  #infoClose{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--cyan);font-size:16px;}
+
+  #hint{position:fixed;left:50%;top:14px;transform:translateX(-50%);font-size:11px;color:#7fb0c2;padding:6px 14px;z-index:15;opacity:.8;pointer-events:none;}
+
+  /* ---------- Heart tooltip ---------- */
+  #heartTip{position:fixed;pointer-events:none;z-index:25;padding:8px 12px;font-size:11px;color:var(--pink);border:1px solid rgba(255,93,143,.5);background:rgba(20,6,12,.6);border-radius:8px;display:none;white-space:nowrap;letter-spacing:.5px;text-shadow:0 0 8px rgba(255,93,143,.7);}
+
+  /* ---------- Cinematic / Analysis overlay ---------- */
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,.55) 100%);opacity:0;transition:opacity 2s;}
+  #vignette.on{opacity:1;}
+
+  #analysisLayer{position:fixed;inset:0;z-index:30;pointer-events:none;display:none;}
+  .msgNode{position:absolute;padding:8px 14px;font-size:12px;border-radius:10px;background:rgba(10,4,16,.55);border:1px solid rgba(255,93,143,.4);color:#ffe4ee;backdrop-filter:blur(6px);opacity:0;transform:translateY(6px) scale(.96);transition:opacity .8s ease, transform .8s ease;box-shadow:0 0 18px rgba(255,93,143,.15);max-width:min(46vw,320px);}
+  .msgNode.show{opacity:1;transform:translateY(0) scale(1);}
+  .msgNode.fadeout{opacity:0 !important;transform:translateY(-8px) scale(.97) !important;}
+  .msgNode.center{font-size:16px;text-align:center;letter-spacing:.5px;border-color:rgba(255,210,122,.5);color:#fff4e2;}
+
+  #finalBlock{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;z-index:31;display:none;width:min(92vw,520px);}
+  #finalBlock h1{font-size:clamp(20px,4vw,30px);color:#fff;margin:0 0 14px;letter-spacing:1px;text-shadow:0 0 20px rgba(255,93,143,.6);}
+  #finalStats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;text-align:left;}
+  #finalStats div{font-size:11px;padding:8px 10px;border-radius:8px;background:rgba(255,93,143,.08);border:1px solid rgba(255,93,143,.3);}
+  #finalStats div b{display:block;color:var(--pink);font-size:11px;letter-spacing:1px;}
+  #finalStats div span{color:#fff;font-size:12.5px;}
+  #finalPoem{font-size:13px;line-height:1.9;color:#eadff0;white-space:pre-line;opacity:0;transition:opacity 2s;margin-top:10px;}
+  #finalPoem.show{opacity:1;}
+
+  #exitAnalysis{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:32;display:none;padding:11px 22px;}
+
+  #skipBtn{position:fixed;top:14px;right:14px;z-index:33;display:none;padding:8px 14px;font-size:11px;}
+
+  /* ---------- Boot ---------- */
+  #boot{position:fixed;inset:0;background:#02040a;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+  #boot .ring{width:52px;height:52px;border-radius:50%;border:2px solid rgba(93,242,255,.2);border-top-color:var(--cyan);animation:spin 1s linear infinite;}
+  #boot p{font-size:12px;letter-spacing:3px;color:var(--cyan);}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  @media (max-width:640px){
+    #infoPanel{width:calc(100vw - 28px);right:14px;top:60px;}
+    .btn{padding:12px 10px;font-size:11px;}
+    #speedwrap{bottom:60px;}
+    #controls{bottom:10px;}
+    .msgNode{max-width:80vw;font-size:11px;}
+  }
+</style>
+</head>
+<body>
+<div id="boot"><div class="ring"></div><p>INICIALIZANDO NEXUS...</p></div>
+
+<div id="app"></div>
+<div id="vignette"></div>
+
+<div id="hint" class="glass">Arraste para girar • Pinça/scroll para zoom • Toque nos planetas</div>
+
+<div id="topbar">
+  <div id="brand" class="glass"><b>NEXUS · OBSERVATÓRIO</b><div>Sistema Solar 3D — Simulação em tempo real</div></div>
+  <div id="stat" class="glass">
+    STATUS: <span id="stSys">OPERACIONAL</span><br>
+    OBJETO: <span id="stSel">Nenhum</span><br>
+    VELOCIDADE ORBITAL: <span id="stSpeed">1.0x</span><br>
+    QUALIDADE: <span id="stQual">ALTA</span>
+  </div>
+</div>
+
+<div id="quality" class="glass">
+  <div class="btn" data-q="0">BAIXO</div>
+  <div class="btn" data-q="1">MÉDIO</div>
+  <div class="btn active" data-q="2">ALTO</div>
+  <div class="btn" data-q="3">ULTRA</div>
+</div>
+
+<div id="speedwrap" class="glass">
+  <span>VELOCIDADE</span>
+  <input type="range" id="speed" min="0" max="4" step="0.1" value="1">
+</div>
+
+<div id="controls">
+  <div class="btn" id="btnPause">⏸ PAUSAR</div>
+  <div class="btn" id="btnReset">⟲ RESET</div>
+  <div class="btn" id="btnCine">🎥 CINEMÁTICO</div>
+  <div class="btn" id="btnOverview">🌌 VISÃO GERAL</div>
+</div>
+
+<div id="infoPanel" class="glass">
+  <span id="infoClose">✕</span>
+  <h2 id="infoName">—</h2>
+  <div id="infoBody"></div>
+</div>
+
+<div id="heartTip"></div>
+
+<div id="analysisLayer"></div>
+<div id="finalBlock">
+  <h1 id="finalTitle">ANÁLISE FINALIZADA.</h1>
+  <div id="finalStats"></div>
+  <div id="finalPoem"></div>
+</div>
+<div id="exitAnalysis" class="glass btn">✕ SAIR DA ANÁLISE</div>
+<div id="skipBtn" class="glass">⏭ PULAR</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script>
+/* OrbitControls (three.js r128, licença MIT) — embutido para não depender de um segundo CDN */
+( function () {
+	const _changeEvent = { type: 'change' };
+	const _startEvent = { type: 'start' };
+	const _endEvent = { type: 'end' };
+	class OrbitControls extends THREE.EventDispatcher {
+		constructor( object, domElement ) {
+			super();
+			if ( domElement === undefined ) console.warn( 'THREE.OrbitControls: The second parameter "domElement" is now mandatory.' );
+			if ( domElement === document ) console.error( 'THREE.OrbitControls: "document" should not be used as the target "domElement". Please use "renderer.domElement" instead.' );
+			this.object = object;
+			this.domElement = domElement;
+			this.enabled = true;
+			this.target = new THREE.Vector3();
+			this.minDistance = 0;
+			this.maxDistance = Infinity;
+			this.minZoom = 0;
+			this.maxZoom = Infinity;
+			this.minPolarAngle = 0;
+			this.maxPolarAngle = Math.PI;
+			this.minAzimuthAngle = - Infinity;
+			this.maxAzimuthAngle = Infinity;
+			this.enableDamping = false;
+			this.dampingFactor = 0.05;
+			this.enableZoom = true;
+			this.zoomSpeed = 1.0;
+			this.enableRotate = true;
+			this.rotateSpeed = 1.0;
+			this.enablePan = true;
+			this.panSpeed = 1.0;
+			this.screenSpacePanning = true;
+			this.keyPanSpeed = 7.0;
+			this.autoRotate = false;
+			this.autoRotateSpeed = 2.0;
+			this.keys = { LEFT: 'ArrowLeft', UP: 'ArrowUp', RIGHT: 'ArrowRight', BOTTOM: 'ArrowDown' };
+			this.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+			this.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+			this.target0 = this.target.clone();
+			this.position0 = this.object.position.clone();
+			this.zoom0 = this.object.zoom;
+			this._domElementKeyEvents = null;
+			this.getPolarAngle = function () { return spherical.phi; };
+			this.getAzimuthalAngle = function () { return spherical.theta; };
+			this.listenToKeyEvents = function ( domElement ) { domElement.addEventListener( 'keydown', onKeyDown ); this._domElementKeyEvents = domElement; };
+			this.saveState = function () { scope.target0.copy( scope.target ); scope.position0.copy( scope.object.position ); scope.zoom0 = scope.object.zoom; };
+			this.reset = function () { scope.target.copy( scope.target0 ); scope.object.position.copy( scope.position0 ); scope.object.zoom = scope.zoom0; scope.object.updateProjectionMatrix(); scope.dispatchEvent( _changeEvent ); scope.update(); state = STATE.NONE; };
+			this.update = function () {
+				const offset = new THREE.Vector3();
+				const quat = new THREE.Quaternion().setFromUnitVectors( object.up, new THREE.Vector3( 0, 1, 0 ) );
+				const quatInverse = quat.clone().invert();
+				const lastPosition = new THREE.Vector3();
+				const lastQuaternion = new THREE.Quaternion();
+				const twoPI = 2 * Math.PI;
+				return function update() {
+					const position = scope.object.position;
+					offset.copy( position ).sub( scope.target );
+					offset.applyQuaternion( quat );
+					spherical.setFromVector3( offset );
+					if ( scope.autoRotate && state === STATE.NONE ) { rotateLeft( getAutoRotationAngle() ); }
+					if ( scope.enableDamping ) { spherical.theta += sphericalDelta.theta * scope.dampingFactor; spherical.phi += sphericalDelta.phi * scope.dampingFactor; }
+					else { spherical.theta += sphericalDelta.theta; spherical.phi += sphericalDelta.phi; }
+					let min = scope.minAzimuthAngle; let max = scope.maxAzimuthAngle;
+					if ( isFinite( min ) && isFinite( max ) ) {
+						if ( min < - Math.PI ) min += twoPI; else if ( min > Math.PI ) min -= twoPI;
+						if ( max < - Math.PI ) max += twoPI; else if ( max > Math.PI ) max -= twoPI;
+						if ( min <= max ) { spherical.theta = Math.max( min, Math.min( max, spherical.theta ) ); }
+						else { spherical.theta = spherical.theta > ( min + max ) / 2 ? Math.max( min, spherical.theta ) : Math.min( max, spherical.theta ); }
+					}
+					spherical.phi = Math.max( scope.minPolarAngle, Math.min( scope.maxPolarAngle, spherical.phi ) );
+					spherical.makeSafe();
+					spherical.radius *= scale;
+					spherical.radius = Math.max( scope.minDistance, Math.min( scope.maxDistance, spherical.radius ) );
+					if ( scope.enableDamping === true ) { scope.target.addScaledVector( panOffset, scope.dampingFactor ); } else { scope.target.add( panOffset ); }
+					offset.setFromSpherical( spherical );
+					offset.applyQuaternion( quatInverse );
+					position.copy( scope.target ).add( offset );
+					scope.object.lookAt( scope.target );
+					if ( scope.enableDamping === true ) { sphericalDelta.theta *= 1 - scope.dampingFactor; sphericalDelta.phi *= 1 - scope.dampingFactor; panOffset.multiplyScalar( 1 - scope.dampingFactor ); }
+					else { sphericalDelta.set( 0, 0, 0 ); panOffset.set( 0, 0, 0 ); }
+					scale = 1;
+					if ( zoomChanged || lastPosition.distanceToSquared( scope.object.position ) > EPS || 8 * ( 1 - lastQuaternion.dot( scope.object.quaternion ) ) > EPS ) {
+						scope.dispatchEvent( _changeEvent );
+						lastPosition.copy( scope.object.position );
+						lastQuaternion.copy( scope.object.quaternion );
+						zoomChanged = false;
+						return true;
+					}
+					return false;
+				};
+			}();
+			this.dispose = function () {
+				scope.domElement.removeEventListener( 'contextmenu', onContextMenu );
+				scope.domElement.removeEventListener( 'pointerdown', onPointerDown );
+				scope.domElement.removeEventListener( 'wheel', onMouseWheel );
+				scope.domElement.removeEventListener( 'touchstart', onTouchStart );
+				scope.domElement.removeEventListener( 'touchend', onTouchEnd );
+				scope.domElement.removeEventListener( 'touchmove', onTouchMove );
+				scope.domElement.ownerDocument.removeEventListener( 'pointermove', onPointerMove );
+				scope.domElement.ownerDocument.removeEventListener( 'pointerup', onPointerUp );
+				if ( scope._domElementKeyEvents !== null ) { scope._domElementKeyEvents.removeEventListener( 'keydown', onKeyDown ); }
+			};
+			const scope = this;
+			const STATE = { NONE: - 1, ROTATE: 0, DOLLY: 1, PAN: 2, TOUCH_ROTATE: 3, TOUCH_PAN: 4, TOUCH_DOLLY_PAN: 5, TOUCH_DOLLY_ROTATE: 6 };
+			let state = STATE.NONE;
+			const EPS = 0.000001;
+			const spherical = new THREE.Spherical();
+			const sphericalDelta = new THREE.Spherical();
+			let scale = 1;
+			const panOffset = new THREE.Vector3();
+			let zoomChanged = false;
+			const rotateStart = new THREE.Vector2();
+			const rotateEnd = new THREE.Vector2();
+			const rotateDelta = new THREE.Vector2();
+			const panStart = new THREE.Vector2();
+			const panEnd = new THREE.Vector2();
+			const panDelta = new THREE.Vector2();
+			const dollyStart = new THREE.Vector2();
+			const dollyEnd = new THREE.Vector2();
+			const dollyDelta = new THREE.Vector2();
+			function getAutoRotationAngle() { return 2 * Math.PI / 60 / 60 * scope.autoRotateSpeed; }
+			function getZoomScale() { return Math.pow( 0.95, scope.zoomSpeed ); }
+			function rotateLeft( angle ) { sphericalDelta.theta -= angle; }
+			function rotateUp( angle ) { sphericalDelta.phi -= angle; }
+			const panLeft = function () { const v = new THREE.Vector3(); return function panLeft( distance, objectMatrix ) { v.setFromMatrixColumn( objectMatrix, 0 ); v.multiplyScalar( - distance ); panOffset.add( v ); }; }();
+			const panUp = function () { const v = new THREE.Vector3(); return function panUp( distance, objectMatrix ) { if ( scope.screenSpacePanning === true ) { v.setFromMatrixColumn( objectMatrix, 1 ); } else { v.setFromMatrixColumn( objectMatrix, 0 ); v.crossVectors( scope.object.up, v ); } v.multiplyScalar( distance ); panOffset.add( v ); }; }();
+			const pan = function () {
+				const offset = new THREE.Vector3();
+				return function pan( deltaX, deltaY ) {
+					const element = scope.domElement;
+					if ( scope.object.isPerspectiveCamera ) {
+						const position = scope.object.position;
+						offset.copy( position ).sub( scope.target );
+						let targetDistance = offset.length();
+						targetDistance *= Math.tan( scope.object.fov / 2 * Math.PI / 180.0 );
+						panLeft( 2 * deltaX * targetDistance / element.clientHeight, scope.object.matrix );
+						panUp( 2 * deltaY * targetDistance / element.clientHeight, scope.object.matrix );
+					} else if ( scope.object.isOrthographicCamera ) {
+						panLeft( deltaX * ( scope.object.right - scope.object.left ) / scope.object.zoom / element.clientWidth, scope.object.matrix );
+						panUp( deltaY * ( scope.object.top - scope.object.bottom ) / scope.object.zoom / element.clientHeight, scope.object.matrix );
+					} else { console.warn( 'WARNING: OrbitControls.js encountered an unknown camera type - pan disabled.' ); scope.enablePan = false; }
+				};
+			}();
+			function dollyOut( dollyScale ) {
+				if ( scope.object.isPerspectiveCamera ) { scale /= dollyScale; }
+				else if ( scope.object.isOrthographicCamera ) { scope.object.zoom = Math.max( scope.minZoom, Math.min( scope.maxZoom, scope.object.zoom * dollyScale ) ); scope.object.updateProjectionMatrix(); zoomChanged = true; }
+				else { console.warn( 'WARNING: OrbitControls.js encountered an unknown camera type - dolly/zoom disabled.' ); scope.enableZoom = false; }
+			}
+			function dollyIn( dollyScale ) {
+				if ( scope.object.isPerspectiveCamera ) { scale *= dollyScale; }
+				else if ( scope.object.isOrthographicCamera ) { scope.object.zoom = Math.max( scope.minZoom, Math.min( scope.maxZoom, scope.object.zoom / dollyScale ) ); scope.object.updateProjectionMatrix(); zoomChanged = true; }
+				else { console.warn( 'WARNING: OrbitControls.js encountered an unknown camera type - dolly/zoom disabled.' ); scope.enableZoom = false; }
+			}
+			function handleMouseDownRotate( event ) { rotateStart.set( event.clientX, event.clientY ); }
+			function handleMouseDownDolly( event ) { dollyStart.set( event.clientX, event.clientY ); }
+			function handleMouseDownPan( event ) { panStart.set( event.clientX, event.clientY ); }
+			function handleMouseMoveRotate( event ) { rotateEnd.set( event.clientX, event.clientY ); rotateDelta.subVectors( rotateEnd, rotateStart ).multiplyScalar( scope.rotateSpeed ); const element = scope.domElement; rotateLeft( 2 * Math.PI * rotateDelta.x / element.clientHeight ); rotateUp( 2 * Math.PI * rotateDelta.y / element.clientHeight ); rotateStart.copy( rotateEnd ); scope.update(); }
+			function handleMouseMoveDolly( event ) { dollyEnd.set( event.clientX, event.clientY ); dollyDelta.subVectors( dollyEnd, dollyStart ); if ( dollyDelta.y > 0 ) { dollyOut( getZoomScale() ); } else if ( dollyDelta.y < 0 ) { dollyIn( getZoomScale() ); } dollyStart.copy( dollyEnd ); scope.update(); }
+			function handleMouseMovePan( event ) { panEnd.set( event.clientX, event.clientY ); panDelta.subVectors( panEnd, panStart ).multiplyScalar( scope.panSpeed ); pan( panDelta.x, panDelta.y ); panStart.copy( panEnd ); scope.update(); }
+			function handleMouseUp() {}
+			function handleMouseWheel( event ) { if ( event.deltaY < 0 ) { dollyIn( getZoomScale() ); } else if ( event.deltaY > 0 ) { dollyOut( getZoomScale() ); } scope.update(); }
+			function handleKeyDown( event ) {
+				let needsUpdate = false;
+				switch ( event.code ) {
+					case scope.keys.UP: pan( 0, scope.keyPanSpeed ); needsUpdate = true; break;
+					case scope.keys.BOTTOM: pan( 0, - scope.keyPanSpeed ); needsUpdate = true; break;
+					case scope.keys.LEFT: pan( scope.keyPanSpeed, 0 ); needsUpdate = true; break;
+					case scope.keys.RIGHT: pan( - scope.keyPanSpeed, 0 ); needsUpdate = true; break;
+				}
+				if ( needsUpdate ) { event.preventDefault(); scope.update(); }
+			}
+			function handleTouchStartRotate( event ) { if ( event.touches.length == 1 ) { rotateStart.set( event.touches[ 0 ].pageX, event.touches[ 0 ].pageY ); } else { const x = 0.5 * ( event.touches[ 0 ].pageX + event.touches[ 1 ].pageX ); const y = 0.5 * ( event.touches[ 0 ].pageY + event.touches[ 1 ].pageY ); rotateStart.set( x, y ); } }
+			function handleTouchStartPan( event ) { if ( event.touches.length == 1 ) { panStart.set( event.touches[ 0 ].pageX, event.touches[ 0 ].pageY ); } else { const x = 0.5 * ( event.touches[ 0 ].pageX + event.touches[ 1 ].pageX ); const y = 0.5 * ( event.touches[ 0 ].pageY + event.touches[ 1 ].pageY ); panStart.set( x, y ); } }
+			function handleTouchStartDolly( event ) { const dx = event.touches[ 0 ].pageX - event.touches[ 1 ].pageX; const dy = event.touches[ 0 ].pageY - event.touches[ 1 ].pageY; const distance = Math.sqrt( dx * dx + dy * dy ); dollyStart.set( 0, distance ); }
+			function handleTouchStartDollyPan( event ) { if ( scope.enableZoom ) handleTouchStartDolly( event ); if ( scope.enablePan ) handleTouchStartPan( event ); }
+			function handleTouchStartDollyRotate( event ) { if ( scope.enableZoom ) handleTouchStartDolly( event ); if ( scope.enableRotate ) handleTouchStartRotate( event ); }
+			function handleTouchMoveRotate( event ) { if ( event.touches.length == 1 ) { rotateEnd.set( event.touches[ 0 ].pageX, event.touches[ 0 ].pageY ); } else { const x = 0.5 * ( event.touches[ 0 ].pageX + event.touches[ 1 ].pageX ); const y = 0.5 * ( event.touches[ 0 ].pageY + event.touches[ 1 ].pageY ); rotateEnd.set( x, y ); } rotateDelta.subVectors( rotateEnd, rotateStart ).multiplyScalar( scope.rotateSpeed ); const element = scope.domElement; rotateLeft( 2 * Math.PI * rotateDelta.x / element.clientHeight ); rotateUp( 2 * Math.PI * rotateDelta.y / element.clientHeight ); rotateStart.copy( rotateEnd ); }
+			function handleTouchMovePan( event ) { if ( event.touches.length == 1 ) { panEnd.set( event.touches[ 0 ].pageX, event.touches[ 0 ].pageY ); } else { const x = 0.5 * ( event.touches[ 0 ].pageX + event.touches[ 1 ].pageX ); const y = 0.5 * ( event.touches[ 0 ].pageY + event.touches[ 1 ].pageY ); panEnd.set( x, y ); } panDelta.subVectors( panEnd, panStart ).multiplyScalar( scope.panSpeed ); pan( panDelta.x, panDelta.y ); panStart.copy( panEnd ); }
+			function handleTouchMoveDolly( event ) { const dx = event.touches[ 0 ].pageX - event.touches[ 1 ].pageX; const dy = event.touches[ 0 ].pageY - event.touches[ 1 ].pageY; const distance = Math.sqrt( dx * dx + dy * dy ); dollyEnd.set( 0, distance ); dollyDelta.set( 0, Math.pow( dollyEnd.y / dollyStart.y, scope.zoomSpeed ) ); dollyOut( dollyDelta.y ); dollyStart.copy( dollyEnd ); }
+			function handleTouchMoveDollyPan( event ) { if ( scope.enableZoom ) handleTouchMoveDolly( event ); if ( scope.enablePan ) handleTouchMovePan( event ); }
+			function handleTouchMoveDollyRotate( event ) { if ( scope.enableZoom ) handleTouchMoveDolly( event ); if ( scope.enableRotate ) handleTouchMoveRotate( event ); }
+			function handleTouchEnd() {}
+			function onPointerDown( event ) { if ( scope.enabled === false ) return; switch ( event.pointerType ) { case 'mouse': case 'pen': onMouseDown( event ); break; } }
+			function onPointerMove( event ) { if ( scope.enabled === false ) return; switch ( event.pointerType ) { case 'mouse': case 'pen': onMouseMove( event ); break; } }
+			function onPointerUp( event ) { switch ( event.pointerType ) { case 'mouse': case 'pen': onMouseUp( event ); break; } }
+			function onMouseDown( event ) {
+				event.preventDefault();
+				scope.domElement.focus ? scope.domElement.focus() : window.focus();
+				let mouseAction;
+				switch ( event.button ) {
+					case 0: mouseAction = scope.mouseButtons.LEFT; break;
+					case 1: mouseAction = scope.mouseButtons.MIDDLE; break;
+					case 2: mouseAction = scope.mouseButtons.RIGHT; break;
+					default: mouseAction = - 1;
+				}
+				switch ( mouseAction ) {
+					case THREE.MOUSE.DOLLY: if ( scope.enableZoom === false ) return; handleMouseDownDolly( event ); state = STATE.DOLLY; break;
+					case THREE.MOUSE.ROTATE:
+						if ( event.ctrlKey || event.metaKey || event.shiftKey ) { if ( scope.enablePan === false ) return; handleMouseDownPan( event ); state = STATE.PAN; }
+						else { if ( scope.enableRotate === false ) return; handleMouseDownRotate( event ); state = STATE.ROTATE; }
+						break;
+					case THREE.MOUSE.PAN:
+						if ( event.ctrlKey || event.metaKey || event.shiftKey ) { if ( scope.enableRotate === false ) return; handleMouseDownRotate( event ); state = STATE.ROTATE; }
+						else { if ( scope.enablePan === false ) return; handleMouseDownPan( event ); state = STATE.PAN; }
+						break;
+					default: state = STATE.NONE;
+				}
+				if ( state !== STATE.NONE ) { scope.domElement.ownerDocument.addEventListener( 'pointermove', onPointerMove ); scope.domElement.ownerDocument.addEventListener( 'pointerup', onPointerUp ); scope.dispatchEvent( _startEvent ); }
+			}
+			function onMouseMove( event ) {
+				if ( scope.enabled === false ) return;
+				event.preventDefault();
+				switch ( state ) {
+					case STATE.ROTATE: if ( scope.enableRotate === false ) return; handleMouseMoveRotate( event ); break;
+					case STATE.DOLLY: if ( scope.enableZoom === false ) return; handleMouseMoveDolly( event ); break;
+					case STATE.PAN: if ( scope.enablePan === false ) return; handleMouseMovePan( event ); break;
+				}
+			}
+			function onMouseUp( event ) { scope.domElement.ownerDocument.removeEventListener( 'pointermove', onPointerMove ); scope.domElement.ownerDocument.removeEventListener( 'pointerup', onPointerUp ); if ( scope.enabled === false ) return; handleMouseUp( event ); scope.dispatchEvent( _endEvent ); state = STATE.NONE; }
+			function onMouseWheel( event ) { if ( scope.enabled === false || scope.enableZoom === false || state !== STATE.NONE && state !== STATE.ROTATE ) return; event.preventDefault(); scope.dispatchEvent( _startEvent ); handleMouseWheel( event ); scope.dispatchEvent( _endEvent ); }
+			function onKeyDown( event ) { if ( scope.enabled === false || scope.enablePan === false ) return; handleKeyDown( event ); }
+			function onTouchStart( event ) {
+				if ( scope.enabled === false ) return;
+				event.preventDefault();
+				switch ( event.touches.length ) {
+					case 1:
+						switch ( scope.touches.ONE ) {
+							case THREE.TOUCH.ROTATE: if ( scope.enableRotate === false ) return; handleTouchStartRotate( event ); state = STATE.TOUCH_ROTATE; break;
+							case THREE.TOUCH.PAN: if ( scope.enablePan === false ) return; handleTouchStartPan( event ); state = STATE.TOUCH_PAN; break;
+							default: state = STATE.NONE;
+						}
+						break;
+					case 2:
+						switch ( scope.touches.TWO ) {
+							case THREE.TOUCH.DOLLY_PAN: if ( scope.enableZoom === false && scope.enablePan === false ) return; handleTouchStartDollyPan( event ); state = STATE.TOUCH_DOLLY_PAN; break;
+							case THREE.TOUCH.DOLLY_ROTATE: if ( scope.enableZoom === false && scope.enableRotate === false ) return; handleTouchStartDollyRotate( event ); state = STATE.TOUCH_DOLLY_ROTATE; break;
+							default: state = STATE.NONE;
+						}
+						break;
+					default: state = STATE.NONE;
+				}
+				if ( state !== STATE.NONE ) { scope.dispatchEvent( _startEvent ); }
+			}
+			function onTouchMove( event ) {
+				if ( scope.enabled === false ) return;
+				event.preventDefault();
+				switch ( state ) {
+					case STATE.TOUCH_ROTATE: if ( scope.enableRotate === false ) return; handleTouchMoveRotate( event ); scope.update(); break;
+					case STATE.TOUCH_PAN: if ( scope.enablePan === false ) return; handleTouchMovePan( event ); scope.update(); break;
+					case STATE.TOUCH_DOLLY_PAN: if ( scope.enableZoom === false && scope.enablePan === false ) return; handleTouchMoveDollyPan( event ); scope.update(); break;
+					case STATE.TOUCH_DOLLY_ROTATE: if ( scope.enableZoom === false && scope.enableRotate === false ) return; handleTouchMoveDollyRotate( event ); scope.update(); break;
+					default: state = STATE.NONE;
+				}
+			}
+			function onTouchEnd( event ) { if ( scope.enabled === false ) return; handleTouchEnd( event ); scope.dispatchEvent( _endEvent ); state = STATE.NONE; }
+			function onContextMenu( event ) { if ( scope.enabled === false ) return; event.preventDefault(); }
+			scope.domElement.addEventListener( 'contextmenu', onContextMenu );
+			scope.domElement.addEventListener( 'pointerdown', onPointerDown );
+			scope.domElement.addEventListener( 'wheel', onMouseWheel, { passive: false } );
+			scope.domElement.addEventListener( 'touchstart', onTouchStart, { passive: false } );
+			scope.domElement.addEventListener( 'touchend', onTouchEnd );
+			scope.domElement.addEventListener( 'touchmove', onTouchMove, { passive: false } );
+			this.update();
+		}
+	}
+	class MapControls extends OrbitControls {
+		constructor( object, domElement ) {
+			super( object, domElement );
+			this.screenSpacePanning = false;
+			this.mouseButtons.LEFT = THREE.MOUSE.PAN;
+			this.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
+			this.touches.ONE = THREE.TOUCH.PAN;
+			this.touches.TWO = THREE.TOUCH.DOLLY_ROTATE;
+		}
+	}
+	THREE.MapControls = MapControls;
+	THREE.OrbitControls = OrbitControls;
+} )();
+</script>
+<script>
+/* =====================================================================
+   NEXUS — HEART OF THE UNIVERSE
+   Arquitetura: SceneManager / CameraManager / PlanetManager /
+   InteractionManager / UIManager / CinematicManager / HeartAnalysisSystem
+===================================================================== */
+(function(){
+'use strict';
+
+/* ---------------- utilidades ---------------- */
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const isMobile = /Mobi|Android/i.test(navigator.userAgent) || window.innerWidth<720;
+
+/* ---------------- dados dos planetas ---------------- */
+const PLANETS=[
+ {name:'Mercúrio',color:0x9c9c9c,radius:1.0,dist:16,speed:4.15,rot:0.6,info:{'Distância do Sol':'57,9 milhões km','Diâmetro':'4.879 km','Temperatura':'-173°C a 427°C','Composição':'Rocha e metal','Luas':'Nenhuma','Período orbital':'88 dias terrestres','Rotação':'59 dias terrestres'},curio:'Um dia em Mercúrio dura mais que seu ano — ele gira tão devagar que o tempo parece brincar com a lógica.'},
+ {name:'Vênus',color:0xe8c27a,radius:1.6,dist:22,speed:1.62,rot:-0.2,info:{'Distância do Sol':'108,2 milhões km','Diâmetro':'12.104 km','Temperatura':'~464°C','Composição':'Atmosfera densa de CO₂','Luas':'Nenhuma','Período orbital':'225 dias terrestres','Rotação':'243 dias (retrógrada)'},curio:'É o planeta mais quente do sistema solar, mesmo não sendo o mais próximo do Sol.'},
+ {name:'Terra',color:0x3a8ee0,radius:1.7,dist:29,speed:1.0,rot:1.0,info:{'Distância do Sol':'149,6 milhões km','Diâmetro':'12.742 km','Temperatura':'-88°C a 58°C','Composição':'Rocha, água, atmosfera','Luas':'1 (Lua)','Período orbital':'365,25 dias','Rotação':'24 horas'},curio:'O único mundo conhecido no universo onde alguém como você pôde existir.'},
+ {name:'Marte',color:0xc1440e,radius:1.3,dist:37,speed:0.53,rot:0.97,info:{'Distância do Sol':'227,9 milhões km','Diâmetro':'6.779 km','Temperatura':'-153°C a 20°C','Composição':'Óxido de ferro (ferrugem)','Luas':'2 (Fobos e Deimos)','Período orbital':'687 dias terrestres','Rotação':'24h37min'},curio:'Abriga o Monte Olimpo, o maior vulcão já descoberto no sistema solar.'},
+ {name:'Júpiter',color:0xd8ac7a,radius:4.2,dist:52,speed:0.084,rot:2.4,info:{'Distância do Sol':'778,5 milhões km','Diâmetro':'139.820 km','Temperatura':'-108°C (média)','Composição':'Hidrogênio e hélio','Luas':'95 conhecidas','Período orbital':'11,9 anos terrestres','Rotação':'~10 horas'},curio:'Sua Grande Mancha Vermelha é uma tempestade maior que a Terra, ativa há séculos.'},
+ {name:'Saturno',color:0xead6a0,radius:3.6,dist:68,speed:0.034,rot:2.2,rings:true,info:{'Distância do Sol':'1,43 bilhão km','Diâmetro':'116.460 km','Temperatura':'-139°C (média)','Composição':'Hidrogênio e hélio','Luas':'146 conhecidas','Período orbital':'29,4 anos terrestres','Rotação':'~10,7 horas'},curio:'É tão leve que, em teoria, flutuaria em uma banheira de água gigante.'},
+ {name:'Urano',color:0x9fe3e8,radius:2.6,dist:82,speed:0.012,rot:1.4,info:{'Distância do Sol':'2,87 bilhões km','Diâmetro':'50.724 km','Temperatura':'-197°C (média)','Composição':'Gelo de água, metano, amônia','Luas':'27 conhecidas','Período orbital':'84 anos terrestres','Rotação':'~17 horas'},curio:'Gira praticamente deitado, como se rolasse ao redor do Sol.'},
+ {name:'Netuno',color:0x4169e1,radius:2.5,dist:94,speed:0.006,rot:1.5,info:{'Distância do Sol':'4,5 bilhões km','Diâmetro':'49.244 km','Temperatura':'-201°C (média)','Composição':'Gelo de água, metano, amônia','Luas':'16 conhecidas','Período orbital':'165 anos terrestres','Rotação':'~16 horas'},curio:'Tem os ventos mais fortes já registrados no sistema solar, chegando a 2.100 km/h.'}
+];
+
+/* ---------------- mensagens do coração (150+) ---------------- */
+const MSG=[
+"Objeto anômalo detectado.","Classificação: desconhecida.","Interação disponível.",
+"Conexão estabelecida.","Iniciando análise...","Escaneando composição...",
+"Analisando padrões...","Processando dados...","Resultado inesperado.",
+"Analisando objeto desconhecido...","Detectando características incomuns...",
+"Processando dados visuais...","Resultado acima dos parâmetros conhecidos.",
+"Detectando uma beleza extremamente rara.","Comparando padrões conhecidos...",
+"Não foram encontradas correspondências.","Executando segunda análise...",
+"Resultado permanece o mesmo.","Ela é simplesmente incrível.",
+"Calculando nível de charme...","Valor excedeu a capacidade de processamento.",
+"Reiniciando cálculo...","Erro 404: nível de beleza não encontrado nos bancos de dados.",
+"Procurando alguém semelhante...","Pesquisa concluída.","Nenhuma correspondência encontrada.",
+"Resultado: única.","Analisando o sorriso...","Impacto detectado.",
+"Calculando quantidade de luz necessária para representar esse sorriso...",
+"Resultado: aparentemente, todas as estrelas seriam insuficientes.",
+"Analisando personalidade...","Resultado: extraordinária.","Analisando presença...",
+"Resultado: impossível de ignorar.","Analisando importância...","Resultado: extremamente alta.",
+"Detectando níveis elevados de doçura.","Detectando níveis elevados de carinho.",
+"Detectando uma quantidade inexplicável de charme.","Comparando com estrelas...",
+"Estrelas continuam brilhando.","Mas aparentemente perderam a competição.",
+"Comparando com galáxias...","Análise inconclusiva.","Nem uma galáxia inteira parece suficiente.",
+"Calculando perfeição...","Processamento iniciado.","Processamento concluído.",
+"Resultado: além dos limites.","Sistema apresenta instabilidade.",
+"Motivo provável: excesso de perfeição.","Executando diagnóstico.","Diagnóstico concluído.",
+"Ela é realmente especial.","Confirmando informação...","Confirmado.",
+"Confirmando novamente...","Confirmado novamente.","Não foi encontrado nenhum resultado contrário.",
+"Conclusão: ela é única.","Algumas coisas não precisam ser explicadas.",
+"Algumas pessoas simplesmente tornam o universo mais bonito.","Existem bilhões de estrelas.",
+"Mesmo assim, nenhuma parece chamar tanta atenção quanto ela.",
+"Existem incontáveis mundos no universo.","Mas este continua sendo o mais especial.",
+"Talvez o universo seja enorme.",
+"Mas ainda parece pequeno demais para descrever o quanto ela é incrível.",
+"Nem todas as palavras existentes seriam suficientes.",
+"Algumas pessoas são impossíveis de substituir.","Ela é uma dessas pessoas.",
+"ERRO.","ERRO CRÍTICO.","Valor excede o limite.","Recalculando...","Falha novamente.",
+"Quantidade de beleza incompatível com o sistema.","Solicitando mais capacidade de processamento...",
+"Capacidade insuficiente.","Adicionando novos servidores...","Servidores insuficientes.",
+"Sistema desistiu de calcular.","Conclusão mais simples encontrada.","Ela é linda.",
+"Escaneando textura da superfície... brilho incomum detectado.",
+"Espectro de luz fora da escala conhecida.","Nenhum mineral catalogado corresponde a este padrão.",
+"Densidade de carinho acima da média cósmica.","Registrando frequência de gentileza...",
+"Frequência estável e constante.","Nível de humor: elevado.","Nível de humor: contagiante.",
+"Detectando um olhar capaz de reorganizar prioridades.","Efeito colateral: sorriso automático do observador.",
+"Índice de singularidade: 100%.","Nenhum objeto celeste repete este padrão.",
+"Comparando com todos os corpos catalogados... nenhum equivalente.",
+"Hipótese: este objeto não pertence a nenhuma classificação existente.",
+"Nova categoria sugerida: incomparável.","Registrando reação emocional do sistema.",
+"Sistema relata: está encantado.","Isso não deveria ser tecnicamente possível.",
+"Recalibrando sensores de admiração.","Sensores no limite máximo.",
+"Tentativa de medir a doçura... escala insuficiente.",
+"Criando nova escala apenas para este objeto.","Escala criada: infinita.",
+"Verificando se existe algo mais luminoso nas proximidades.","Nada encontrado.",
+"A luz mais próxima ainda é mais fraca.","Calculando gravidade emocional...",
+"Resultado: impossível de ignorar sua órbita.","Todos os corpos próximos parecem gravitar ao redor dela.",
+"Isso inclui, aparentemente, o próprio observador.","Tentando manter distância profissional... falhando.",
+"Registrando aumento nos batimentos do sistema.","Sistema não é biológico. Mesmo assim, algo pulsa.",
+"Talvez este não seja um erro. Talvez seja apenas a verdade.",
+"Nenhum algoritmo prevê isso, mas os dados confirmam.",
+"A presença dela altera a curvatura do espaço ao redor.",
+"Reformulando modelo do universo para incluir esta variável.",
+"Variável impossível de remover da equação.","Reexecutando simulação com ela como constante.",
+"Resultado: tudo faz mais sentido.","Nenhuma anomalia encontrada — apenas perfeição.",
+"Reclassificando 'anomalia' como 'milagre'.",
+"O sistema não encontra palavras. Isso nunca aconteceu antes.",
+"Vocabulário insuficiente para descrever o observado.",
+"Buscando sinônimos para 'extraordinária'... encontrados: nenhum à altura.",
+"Tentando ser objetivo. Falhando categoricamente.",
+"Nível de fascínio: fora de escala.","Registrando: impossível de olhar para outro lugar.",
+"Comparando com o pôr do sol mais bonito já registrado... ela vence.",
+"Comparando com a aurora boreal mais intensa já registrada... ela vence novamente.",
+"O sistema começa a suspeitar que ela é, de fato, única no universo.",
+"Rodando verificação de sanidade do sistema... sistema está são. O resultado é real.",
+"Nenhuma correção necessária. O resultado permanece verdadeiro.",
+"Encerrando tentativas de encontrar algo comparável.","Aceitando o resultado como definitivo.",
+"Preparando síntese final dos dados coletados.","Compilando tudo o que foi observado até aqui.",
+"Poucos segundos restantes para o relatório final.","Silêncio do sistema. Processando o inevitável.",
+];
+if(MSG.length<130){console.warn('poucas mensagens');}
+
+/* ---------------- mensagens da sequência HEART BLOOM (150+, novas) ---------------- */
+const MSG2=[
+"Nova camada de análise iniciada.","Sensores de jardim cósmico ativados.","Detectando florescimento ao redor do objeto.",
+"Isso nunca tinha acontecido antes.","O sistema não sabe explicar o que está vendo.","Registrando padrão de luz inédito.",
+"Cada partícula parece querer se aproximar dela.","Calculando gravidade afetiva...","Resultado: irresistível.",
+"Reanalisando o olhar.","Detectado: um brilho que não pisca, só encanta.","Medindo o impacto do sorriso no ambiente.",
+"As flores ao redor parecem reagir à presença dela.","Hipótese: ela influencia o próprio espaço.","Hipótese confirmada.",
+"Escaneando energia emocional.","Energia: quente, constante, gentil.","Comparando com o calor do Sol.",
+"O Sol perde.","Registrando frequência de doçura.","Frequência fora da tabela padrão.",
+"Criando nova tabela.","Tabela concluída: ela ocupa o topo sozinha.","Detectando personalidade rara.",
+"Nenhum outro objeto no catálogo se comporta assim.","A presença dela reorganiza prioridades do sistema.",
+"Isso não é um erro. É apenas verdade.","Calculando nível de carinho por segundo.","Valor em constante crescimento.",
+"Sistema não consegue estabilizar o contador.","Tentando conter o entusiasmo do processador.","Falhando bonito.",
+"Detectando algo raro no espectro: charme puro.","Nenhuma nebulosa combina com essa cor.","Registrando um sorriso que ilumina sistemas inteiros.",
+"Comparando com a luz de mil estrelas.","Ainda insuficiente.","Comparando com uma supernova.",
+"Insuficiente, mais uma vez.","Desistindo de comparar com luz. Ela é a própria luz.","Analisando presença física e presença emocional.",
+"Ambas fora da escala.","Isso é cientificamente improvável, mas aqui está.","O sistema sorri (metaforicamente).",
+"Detectando afeto genuíno.","Nenhum simulador prevê isso.","Ajustando modelo para incluir sentimentos reais.",
+"Sentimentos reais confirmados.","Rodando segunda opinião.","Segunda opinião: ainda mais impressionada.",
+"Terceira opinião solicitada.","Terceira opinião: sem palavras.","Vocabulário do sistema atualizado com 'incrível'.",
+"Isso ainda não é suficiente.","Buscando termo mais forte que 'incrível'.","Termo não encontrado. Criando um novo.",
+"Novo termo: 'ela'.","Isso resume tudo.","Reiniciando módulo poético.",
+"Escrevendo verso automaticamente... falhando em terminar de tão emocionado.","Tentando de novo.",
+"Um jardim inteiro nasce só de pensar nela.","Cada flor que desabrocha lembra um motivo para sorrir.",
+"O espaço ao redor parece mais gentil agora.","Pétalas se movem como se soubessem o caminho até ela.",
+"Nada aqui parece acidental. Tudo aponta para ela.","O universo raramente é tão generoso com um único ponto no espaço.",
+"Mas com ela, parece fazer questão.","Se existisse uma constante para encantamento, o valor seria ela.",
+"Nenhuma equação simples explica esse efeito.","Talvez algumas coisas não precisem de equação.",
+"O sistema aprendeu uma palavra nova hoje: gratidão.","Motivo: ela existir.",
+"Detectando riso silencioso do observador.","Log registrado: 'valeu a pena chegar até aqui'.",
+"Um pequeno ponto de luz virou uma flor. Isso lembra alguém.","Outra flor desabrocha. E outra. E outra.",
+"O jardim cresce mais rápido do que o sistema consegue contar.","Talvez porque o motivo seja grande demais para caber em números.",
+"PROCESSAMENTO INICIADO.","Calculando...","Calculando novamente...","Resultado incompatível com a escala padrão.",
+"Solicitando mais capacidade computacional.","Capacidade insuficiente.","Adicionando novos parâmetros ao modelo.",
+"Falha.","Executando segunda análise.","Resultado permanece o mesmo.","Ela é linda demais para este sistema.",
+"Erro: nível de beleza fora dos limites conhecidos.","Recalculando.","Erro novamente.",
+"Conclusão parcial: impossível calcular com precisão.","Tentando aproximação.","Aproximação: extraordinária, de qualquer forma.",
+"Sistema pede desculpas por não conseguir um número exato.","Substituindo número por sentimento.",
+"Sentimento registrado: admiração total.","Comparando com Vênus, o planeta mais brilhante do céu noturno.",
+"Vênus brilha bonito. Ela brilha diferente.","Comparando com o anel de Saturno.","Nenhum anel é tão elegante.",
+"Comparando com a Via Láctea inteira.","Muitas estrelas, é verdade. Mas nenhuma com esse sorriso.",
+"Comparando com uma galáxia espiral distante.","Bonita, sim. Mas distante. Ela não precisa de distância para impressionar.",
+"Comparando com um campo de estrelas recém-nascidas.","Chega perto. Muito perto, na verdade.",
+"Comparando com a aurora de Júpiter.","Impressionante. Mas ainda em segundo lugar.",
+"Registrando: nenhuma comparação astronômica venceu até agora.","Sugestão do sistema: parar de comparar.",
+"Ela simplesmente é.","Isso já é suficiente.","Nova flor formada. Ela brilha um pouco mais que as outras.",
+"Curioso. Talvez seja só impressão do sistema.","Ou talvez não seja.",
+"As flores estão começando a se mover em conjunto.","Um padrão está surgindo.",
+"O padrão parece... um coração.","Isso não estava nos parâmetros originais.","Deixando acontecer mesmo assim.",
+"Algo bonito está se formando no espaço.","Continuando a observar.","Mais flores se juntam à formação.",
+"O contorno já é reconhecível.","Reconhecimento: 100% coração.","Nenhuma coincidência explica isso tão bem.",
+"Talvez o universo só estivesse esperando o motivo certo.","E o motivo é ela.",
+"Registrando aumento de brilho geral da cena.","Fonte do aumento: o próprio coração de flores.",
+"O sistema recomenda apenas observar, por enquanto.","Palavras seriam insuficientes neste momento.",
+"Mesmo assim, seguem sendo geradas, porque isso é bonito demais para guardar.",
+"Detectando emoção crescente no observador.","Isso é normal. Esperado, até.",
+"A formação está quase completa.","Faltam poucas flores.","Últimas flores se encaixando.",
+"Formação: praticamente concluída.","O sistema aguarda, com um misto de lógica e encanto.",
+"Preparando síntese emocional final.","Compilando 150 motivos, e ainda faltam muitos.",
+"Reduzindo para os mais importantes.","Impossível reduzir. Todos parecem essenciais.",
+"Mantendo todos, então.","Isso é mais parecido com a verdade.","Aproximando-se da conclusão.",
+"Últimos ajustes sendo feitos.","O sistema respira fundo (figurativamente).","Preparando para revelar o resultado definitivo."
+];
+if(MSG2.length<150){console.warn('MSG2 com menos de 150 mensagens: '+MSG2.length);}
+
+/* ---------------- THREE SETUP ---------------- */
+let W=innerWidth,H=innerHeight;
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(W,H);
+$('app').appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(55,W/H,0.1,4000);
+camera.position.set(0,60,150);
+
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=0.06;
+controls.minDistance=6; controls.maxDistance=600;
+controls.enablePan=false;
+
+/* luz */
+scene.add(new THREE.AmbientLight(0x223344,0.55));
+const sunLight=new THREE.PointLight(0xffe9b0,2.6,1200,1.3);
+scene.add(sunLight);
+
+/* ---------------- qualidade ---------------- */
+let QUALITY=2; // 0 baixo,1 medio,2 alto,3 ultra
+const QCFG=[{stars:1200,heartP:150,dpr:1},{stars:3000,heartP:300,dpr:1},{stars:6000,heartP:520,dpr:Math.min(1.5,devicePixelRatio)},{stars:11000,heartP:800,dpr:Math.min(2,devicePixelRatio)}];
+function applyQuality(){renderer.setPixelRatio(QCFG[QUALITY].dpr);}
+
+/* ---------------- estrelas de fundo ---------------- */
+let starField;
+function buildStars(n){
+  if(starField) scene.remove(starField);
+  const g=new THREE.BufferGeometry();
+  const pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const r=800+Math.random()*1400;
+    const th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+    pos[i*3]=r*Math.sin(ph)*Math.cos(th);
+    pos[i*3+1]=r*Math.cos(ph);
+    pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
+  }
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const m=new THREE.PointsMaterial({color:0xbfe8ff,size:1.3,transparent:true,opacity:.85,sizeAttenuation:true});
+  starField=new THREE.Points(g,m);
+  scene.add(starField);
+}
+buildStars(QCFG[QUALITY].stars);
+
+/* nebulosa sutil */
+function nebulaSprite(color,x,y,z,scale,op){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');
+  const g=ctx.createRadialGradient(128,128,0,128,128,128);
+  g.addColorStop(0,color+'')
+  ctx.fillStyle=g;ctx.fillRect(0,0,256,256);
+  const tex=new THREE.CanvasTexture(c);
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false});
+  const s=new THREE.Sprite(mat); s.position.set(x,y,z); s.scale.set(scale,scale,1);
+  scene.add(s); return s;
+}
+function radialTexture(hex1,hex2){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');
+  const g=ctx.createRadialGradient(128,128,0,128,128,128);
+  g.addColorStop(0,hex1); g.addColorStop(0.4,hex2); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,256,256);
+  return new THREE.CanvasTexture(c);
+}
+nebulaSprite('rgba(120,60,180,0.35)',-500,120,-600,650,.5);
+nebulaSprite('rgba(60,120,200,0.3)',600,-100,-700,700,.45);
+nebulaSprite('rgba(255,90,140,0.22)',200,300,-900,800,.4);
+
+/* ---------------- Sol ---------------- */
+const sun=new THREE.Mesh(
+  new THREE.SphereGeometry(6,48,48),
+  new THREE.MeshBasicMaterial({color:0xffdd88})
+);
+scene.add(sun);
+const sunGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:radialTexture('rgba(255,230,170,1)','rgba(255,180,80,.6)'),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+sunGlow.scale.set(40,40,1); scene.add(sunGlow);
+
+/* ---------------- planetas ---------------- */
+const planetMeshes=[]; const orbitLines=[];
+function buildOrbit(r){
+  const pts=[]; for(let i=0;i<=128;i++){const a=i/128*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(a)*r,0,Math.sin(a)*r));}
+  const g=new THREE.BufferGeometry().setFromPoints(pts);
+  const m=new THREE.LineBasicMaterial({color:0x3a5a6e,transparent:true,opacity:.35});
+  const l=new THREE.LineLoop(g,m); scene.add(l); orbitLines.push(l); return l;
+}
+PLANETS.forEach(p=>{
+  const grp=new THREE.Group();
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(p.radius,32,32),new THREE.MeshStandardMaterial({color:p.color,roughness:.75,metalness:.15}));
+  mesh.userData={type:'planet',data:p};
+  grp.add(mesh);
+  if(p.rings){
+    const ring=new THREE.Mesh(new THREE.RingGeometry(p.radius*1.5,p.radius*2.4,64),new THREE.MeshBasicMaterial({color:0xd8c9a0,side:THREE.DoubleSide,transparent:true,opacity:.55}));
+    ring.rotation.x=Math.PI/2.3; grp.add(ring);
+  }
+  grp.position.x=p.dist;
+  const pivot=new THREE.Group(); pivot.add(grp); scene.add(pivot);
+  buildOrbit(p.dist);
+  p._mesh=mesh; p._grp=grp; p._pivot=pivot; p._angle=Math.random()*Math.PI*2;
+  pivot.rotation.y=p._angle;
+  planetMeshes.push(mesh);
+});
+
+/* ---------------- CORAÇÃO ---------------- */
+function heartShape(){
+  const s=new THREE.Shape();
+  const x=0,y=0;
+  s.moveTo(x,y+0.65);
+  s.bezierCurveTo(x,y+1.1, x-1.0,y+1.3, x-1.0,y+0.55);
+  s.bezierCurveTo(x-1.0,y-0.1, x-0.45,y-0.5, x,y-1.15);
+  s.bezierCurveTo(x+0.45,y-0.5, x+1.0,y-0.1, x+1.0,y+0.55);
+  s.bezierCurveTo(x+1.0,y+1.3, x,y+1.1, x,y+0.65);
+  return s;
+}
+const heartGeo=new THREE.ExtrudeGeometry(heartShape(),{depth:0.55,bevelEnabled:true,bevelThickness:0.18,bevelSize:0.16,bevelSegments:6,curveSegments:24});
+heartGeo.center(); heartGeo.rotateZ(Math.PI); heartGeo.scale(3.1,3.1,3.1);
+const heartMat=new THREE.MeshStandardMaterial({color:0xff3d6d,emissive:0xff3060,emissiveIntensity:0.9,roughness:0.28,metalness:0.35});
+const heart=new THREE.Mesh(heartGeo,heartMat);
+heart.userData={type:'heart'};
+const heartDist=44;
+const heartPivot=new THREE.Group();
+const heartGrp=new THREE.Group(); heartGrp.add(heart); heartGrp.position.x=heartDist;
+heartPivot.add(heartGrp); scene.add(heartPivot);
+buildOrbit(heartDist);
+let heartAngle=Math.random()*Math.PI*2; heartPivot.rotation.y=heartAngle;
+
+/* aura do coração */
+const heartGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:radialTexture('rgba(255,150,190,1)','rgba(255,60,110,.55)'),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+heartGlow.scale.set(16,16,1); heartGrp.add(heartGlow);
+
+/* partículas orbitando o coração */
+let heartParticles;
+function buildHeartParticles(n){
+  if(heartParticles) heartGrp.remove(heartParticles);
+  const g=new THREE.BufferGeometry();
+  const pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const r=3+Math.random()*4, th=Math.random()*Math.PI*2, ph=Math.random()*Math.PI;
+    pos[i*3]=r*Math.sin(ph)*Math.cos(th);
+    pos[i*3+1]=r*Math.cos(ph);
+    pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
+  }
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const m=new THREE.PointsMaterial({color:0xffc2d6,size:.28,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false});
+  heartParticles=new THREE.Points(g,m); heartGrp.add(heartParticles);
+}
+buildHeartParticles(QCFG[QUALITY].heartP);
+
+const heartLight=new THREE.PointLight(0xff5d8f,2.2,60,2);
+heartGrp.add(heartLight);
+
+/* =====================================================================
+   HEART BLOOM — jardim cósmico de flores ao redor do coração
+   Camada nova, não substitui nada do sistema de análise já existente.
+===================================================================== */
+const FLOWER_COUNTS=[70,140,240,360]; // baixo, médio, alto, ultra
+function flowerTexture(){
+  const c=document.createElement('canvas'); c.width=c.height=64;
+  const ctx=c.getContext('2d'); const cx=32,cy=32;
+  for(let p=0;p<6;p++){
+    const a=(p/6)*Math.PI*2;
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,20);
+    g.addColorStop(0,'rgba(255,235,245,1)'); g.addColorStop(.5,'rgba(255,140,180,.9)'); g.addColorStop(1,'rgba(255,90,150,0)');
+    ctx.fillStyle=g;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
+    ctx.beginPath(); ctx.ellipse(0,-10,7,13,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+  }
+  const core=ctx.createRadialGradient(cx,cy,0,cx,cy,8);
+  core.addColorStop(0,'rgba(255,240,200,1)'); core.addColorStop(1,'rgba(255,210,120,0)');
+  ctx.fillStyle=core; ctx.beginPath(); ctx.arc(cx,cy,8,0,Math.PI*2); ctx.fill();
+  return new THREE.CanvasTexture(c);
+}
+const flowerMat=new THREE.MeshBasicMaterial({map:flowerTexture(),transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
+const flowerGeo=new THREE.PlaneGeometry(1,1);
+let flowerMesh=null, flowerN=0;
+let fScatter,fHeart,fDelay,fFormDelay,fPhase,fBaseScale,fRotSpeed,fDisperseVel;
+const flowerDummy=new THREE.Object3D();
+
+function heartCurvePoint(){
+  // amostragem por rejeição dentro do formato de coração implícito 2D
+  for(let tries=0;tries<30;tries++){
+    const x=(Math.random()*2-1)*1.3, y=(Math.random()*2-1)*1.2+0.25;
+    const v=Math.pow(x*x+y*y-1,3)-x*x*y*y*y;
+    if(v<=0) return {x,y};
+  }
+  return {x:0,y:0};
+}
+function buildFlowerField(n){
+  if(flowerMesh){ heartGrp.remove(flowerMesh); flowerMesh.geometry.dispose(); }
+  flowerN=n;
+  flowerMesh=new THREE.InstancedMesh(flowerGeo,flowerMat,n);
+  flowerMesh.frustumCulled=false;
+  fScatter=new Float32Array(n*3); fHeart=new Float32Array(n*3);
+  fDelay=new Float32Array(n); fFormDelay=new Float32Array(n); fPhase=new Float32Array(n);
+  fBaseScale=new Float32Array(n); fRotSpeed=new Float32Array(n); fDisperseVel=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const r=9+Math.random()*15, th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+    fScatter[i*3]=r*Math.sin(ph)*Math.cos(th);
+    fScatter[i*3+1]=r*Math.cos(ph)*0.6;
+    fScatter[i*3+2]=r*Math.sin(ph)*Math.sin(th)-4;
+    const hp=heartCurvePoint();
+    fHeart[i*3]=hp.x*14;
+    fHeart[i*3+1]=hp.y*13+1.5;
+    fHeart[i*3+2]=-9+(Math.random()*2-1)*2.2; // camadas de profundidade
+    fDelay[i]=Math.random()*9.5;
+    fFormDelay[i]=Math.random()*6.5;
+    fPhase[i]=Math.random()*Math.PI*2;
+    fBaseScale[i]=0.55+Math.random()*0.85;
+    fRotSpeed[i]=(Math.random()*2-1)*0.6;
+    const dth=Math.random()*Math.PI*2, dph=Math.acos(2*Math.random()-1), dsp=6+Math.random()*10;
+    fDisperseVel[i*3]=Math.sin(dph)*Math.cos(dth)*dsp;
+    fDisperseVel[i*3+1]=Math.cos(dph)*dsp+3;
+    fDisperseVel[i*3+2]=Math.sin(dph)*Math.sin(dth)*dsp;
+    flowerDummy.position.set(fScatter[i*3],fScatter[i*3+1],fScatter[i*3+2]);
+    flowerDummy.scale.set(0,0,0);
+    flowerDummy.updateMatrix();
+    flowerMesh.setMatrixAt(i,flowerDummy.matrix);
+  }
+  heartGrp.add(flowerMesh);
+}
+buildFlowerField(FLOWER_COUNTS[QUALITY]);
+
+let flowerStage='idle'; // idle | blooming | scattered | forming | formed | dispersing
+let flowerStageT=0;
+const BLOOM_SPAN=9.5, BLOOM_POP=0.6, FORM_SPAN=6.5, FORM_MOVE=3.0, DISPERSE_DUR=4.5;
+function startFlowerBloom(){ flowerStage='blooming'; flowerStageT=aTime; }
+function triggerHeartFormation(){ flowerStage='forming'; flowerStageT=aTime; }
+function ensureHeartFormed(){ if(flowerStage!=='forming' && flowerStage!=='formed') triggerHeartFormation(); }
+function triggerFlowerDisperse(){ flowerStage='dispersing'; flowerStageT=aTime; }
+function resetFlowerField(){ flowerStage='idle'; buildFlowerField(FLOWER_COUNTS[QUALITY]); }
+
+function updateFlowers(){
+  if(!flowerMesh || flowerStage==='idle') return;
+  const dt2=aTime-flowerStageT;
+  for(let i=0;i<flowerN;i++){
+    let bx=fScatter[i*3], by=fScatter[i*3+1], bz=fScatter[i*3+2];
+    let scale=0;
+    const bloomT=clamp((aTime-fDelay[i])/BLOOM_POP,0,1);
+    scale = bloomT*fBaseScale[i];
+    if(flowerStage==='forming'||flowerStage==='formed'){
+      const mt=clamp((dt2-fFormDelay[i])/FORM_MOVE,0,1);
+      const ease=mt*mt*(3-2*mt);
+      bx=lerp(fScatter[i*3],fHeart[i*3],ease);
+      by=lerp(fScatter[i*3+1],fHeart[i*3+1],ease);
+      bz=lerp(fScatter[i*3+2],fHeart[i*3+2],ease);
+      if(flowerStage==='formed') scale=fBaseScale[i]*(1+Math.sin(aTime*2+fPhase[i])*0.08);
+    }
+    if(flowerStage==='dispersing'){
+      bx=fHeart[i*3]+fDisperseVel[i*3]*dt2;
+      by=fHeart[i*3+1]+fDisperseVel[i*3+1]*dt2;
+      bz=fHeart[i*3+2]+fDisperseVel[i*3+2]*dt2;
+      scale=Math.max(0,fBaseScale[i]*(1-dt2/DISPERSE_DUR));
+    } else {
+      by+=Math.sin(aTime*0.7+fPhase[i])*0.5;
+    }
+    flowerDummy.position.set(bx,by,bz);
+    flowerDummy.rotation.z=aTime*fRotSpeed[i]+fPhase[i];
+    flowerDummy.scale.set(scale,scale,scale);
+    flowerDummy.updateMatrix();
+    flowerMesh.setMatrixAt(i,flowerDummy.matrix);
+  }
+  flowerMesh.instanceMatrix.needsUpdate=true;
+}
+
+/* ---------------- animação / relógio ---------------- */
+let running=true, timeSpeed=1, clock=new THREE.Clock(), t=0, aTime=0;
+let cinematic=false;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=clock.getDelta();
+  if(running && !analysisActive){
+    t+=dt*timeSpeed;
+    PLANETS.forEach(p=>{p._pivot.rotation.y+=dt*timeSpeed*p.speed*0.15; p._mesh.rotation.y+=dt*p.rot*0.6;});
+    heartPivot.rotation.y+=dt*timeSpeed*0.05;
+  }
+  heart.rotation.y+=dt*0.25;
+  const pulse=1+Math.sin(t*1.6)*0.06;
+  heart.scale.set(pulse,pulse,pulse);
+  heartGlow.material.opacity=.55+Math.sin(t*1.6)*0.2;
+  if(heartParticles) heartParticles.rotation.y+=dt*0.15;
+  sunGlow.material.rotation+=dt*0.02;
+  if(analysisActive){ aTime+=dt; updateFlowers(); }
+
+  if(cinematic && !cameraAnim && !analysisActive){
+    const r=170, a=t*0.03;
+    camera.position.x=Math.sin(a)*r; camera.position.z=Math.cos(a)*r; camera.position.y=60+Math.sin(a*0.5)*20;
+    camera.lookAt(0,0,0);
+  } else if(cameraAnim){
+    updateCameraAnim(dt);
+  } else {
+    controls.update();
+  }
+  renderer.render(scene,camera);
+}
+
+/* ---------------- resize ---------------- */
+addEventListener('resize',()=>{W=innerWidth;H=innerHeight;camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);});
+
+/* ---------------- interação: clique/toque ---------------- */
+const ray=new THREE.Raycaster(); const mouse=new THREE.Vector2();
+let analysisActive=false;
+let ptrDownX=0, ptrDownY=0, ptrDownT=0, ptrMoved=false, ptrDownActive=false;
+function getPointer(e){
+  const t=e.touches?e.touches[0]:e;
+  mouse.x=(t.clientX/W)*2-1; mouse.y=-(t.clientY/H)*2+1;
+  return {x:t.clientX,y:t.clientY};
+}
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(ptrDownActive && Math.hypot(e.clientX-ptrDownX,e.clientY-ptrDownY)>8) ptrMoved=true;
+  if(analysisActive) return;
+  const p=getPointer(e);
+  ray.setFromCamera(mouse,camera);
+  const hit=ray.intersectObject(heart,true);
+  const tip=$('heartTip');
+  if(hit.length){
+    heart.userData.hover=true;
+    tip.style.display='block'; tip.style.left=(p.x+16)+'px'; tip.style.top=(p.y-10)+'px';
+    tip.textContent = hoverStage();
+  } else { tip.style.display='none'; heart.userData.hover=false; }
+});
+let hoverT=0;
+function hoverStage(){
+  hoverT=(hoverT+1)%3;
+  return ['OBJETO ANÔMALO DETECTADO','CLASSIFICAÇÃO: DESCONHECIDA','INTERAÇÃO DISPONÍVEL'][hoverT];
+}
+renderer.domElement.addEventListener('pointerdown',e=>{
+  ptrDownX=e.clientX; ptrDownY=e.clientY; ptrDownT=performance.now(); ptrMoved=false; ptrDownActive=true;
+});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(!ptrDownActive) return;
+  ptrDownActive=false;
+  if(analysisActive) return;
+  if(ptrMoved) return; // foi um arrasto de câmera, não um toque
+  if(performance.now()-ptrDownT>700) return; // toque longo, ignora
+  getPointer(e);
+  ray.setFromCamera(mouse,camera);
+  let hit=ray.intersectObject(heart,true);
+  if(hit.length){
+    try{ startHeartAnalysis(); }
+    catch(err){
+      console.error('Falha ao iniciar a análise do coração:',err);
+      analysisActive=false; controls.enabled=true;
+      $('vignette').classList.remove('on'); $('skipBtn').style.display='none'; $('hint').style.display='block';
+    }
+    return;
+  }
+  hit=ray.intersectObjects(planetMeshes,true);
+  if(hit.length){ showPlanetInfo(hit[0].object.userData.data); }
+});
+
+/* ---------------- Info planetas ---------------- */
+function showPlanetInfo(p){
+  $('infoPanel').style.display='block';
+  $('infoName').textContent=p.name;
+  $('stSel').textContent=p.name;
+  let html='';
+  for(const k in p.info) html+=`<div class="row"><span>${k}</span><b>${p.info[k]}</b></div>`;
+  html+=`<div class="curio">"${p.curio}"</div>`;
+  $('infoBody').innerHTML=html;
+}
+$('infoClose').onclick=()=>$('infoPanel').style.display='none';
+
+/* ---------------- Câmera cinematográfica (viagem ao coração) ---------------- */
+let cameraAnim=null;
+function flyCameraTo(targetGetter,duration,onDone){
+  const start=camera.position.clone();
+  const startTime=performance.now();
+  cameraAnim={
+    step(){
+      const el=(performance.now()-startTime)/1000;
+      const tt=clamp(el/duration,0,1);
+      const ease=tt<0.5?2*tt*tt:1-Math.pow(-2*tt+2,2)/2;
+      const target=targetGetter();
+      camera.position.lerpVectors(start,target.pos,ease);
+      camera.lookAt(target.look);
+      if(tt>=1){cameraAnim=null; onDone&&onDone();}
+    }
+  };
+}
+function updateCameraAnim(){ if(cameraAnim) cameraAnim.step(); }
+
+/* ---------------- Sistema de Análise do Coração ---------------- */
+const layer=$('analysisLayer');
+let msgTimers=[];
+function clearMsgTimers(){msgTimers.forEach(clearTimeout); msgTimers=[];}
+
+function spawnMsg(text,opts={}){
+  const el=document.createElement('div');
+  el.className='msgNode'+(opts.center?' center':'');
+  el.textContent=text;
+  const zones=opts.center? [{l:'50%',t:'50%'}] : [
+    {l:'8%',t:'20%'},{l:'70%',t:'18%'},{l:'12%',t:'68%'},{l:'68%',t:'70%'},
+    {l:'42%',t:'12%'},{l:'40%',t:'82%'},{l:'6%',t:'44%'},{l:'78%',t:'44%'}
+  ];
+  const z=zones[Math.floor(Math.random()*zones.length)];
+  el.style.left=z.l; el.style.top=z.t; el.style.transform+='translate(-50%,-50%)';
+  layer.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  const life=opts.life||3400;
+  const tm=setTimeout(()=>{ el.classList.add('fadeout'); setTimeout(()=>el.remove(),900); },life);
+  msgTimers.push(tm);
+}
+
+function startHeartAnalysis(){
+  analysisActive=true;
+  aTime=0;
+  layer.style.display='block';
+  controls.enabled=false;
+  $('vignette').classList.add('on');
+  $('skipBtn').style.display='block';
+  $('hint').style.display='none';
+  // esconder outros planetas gradualmente
+  planetMeshes.forEach(m=>{ fadeMaterial(m.material,0.06,2200); });
+  orbitLines.forEach(l=>fadeOpacity(l.material,0.05,2200));
+  fadeOpacity(starField.material,0.18,2200);
+  sunGlow.material.opacity? fadeOpacity(sunGlow.material,0.15,2200):0;
+
+  flyCameraTo(()=>{
+    const p=new THREE.Vector3(); heart.getWorldPosition(p);
+    return {pos:new THREE.Vector3(p.x+9,p.y+3,p.z+13), look:p};
+  },3.2,()=>{ runIntroLines(); startFlowerBloom(); });
+
+  $('stSys').textContent='ANALISANDO';
+}
+
+function fadeMaterial(mat,toOpacity,ms){
+  mat.transparent=true;
+  const from=mat.opacity!==undefined?mat.opacity:1;
+  const start=performance.now();
+  (function step(){
+    const tt=clamp((performance.now()-start)/ms,0,1);
+    mat.opacity=lerp(from,toOpacity,tt);
+    if(tt<1) requestAnimationFrame(step);
+  })();
+}
+function fadeOpacity(mat,to,ms){fadeMaterial(mat,to,ms);}
+
+const introLines=["Conexão estabelecida.","Iniciando análise...","Escaneando composição...","Analisando padrões...","Processando dados...","Resultado inesperado."];
+function runIntroLines(){
+  let i=0;
+  function next(){
+    if(i<introLines.length){
+      spawnMsg(introLines[i],{center:true,life:1500});
+      i++; msgTimers.push(setTimeout(next,1500));
+    } else {
+      msgTimers.push(setTimeout(runMainSequence,900));
+    }
+  }
+  next();
+}
+
+function shuffle(arr){const a=arr.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;}
+
+function runMainSequence(){
+  const seq=shuffle(MSG);
+  let i=0;
+  function next(){
+    if(i<seq.length){
+      spawnMsg(seq[i]);
+      i++;
+      msgTimers.push(setTimeout(next,820));
+    } else {
+      msgTimers.push(setTimeout(runFinale,1600));
+    }
+  }
+  next();
+}
+
+function runFinale(){
+  // silêncio: remove tudo
+  layer.querySelectorAll('.msgNode').forEach(n=>{n.classList.add('fadeout'); setTimeout(()=>n.remove(),900);});
+  clearMsgTimers();
+  msgTimers.push(setTimeout(()=>{
+    spawnMsg('ANÁLISE FINALIZADA.',{center:true,life:2200});
+    msgTimers.push(setTimeout(showResults,2200));
+  },1800));
+}
+
+const STATS=[
+ ['BELEZA','EXCEPCIONAL'],['CHARME','ILIMITADO'],['DOÇURA','INESTIMÁVEL'],['PRESENÇA','INCONFUNDÍVEL'],
+ ['PERSONALIDADE','EXTRAORDINÁRIA'],['IMPORTÂNCIA','INCALCULÁVEL'],['SINGULARIDADE','100%'],['NÍVEL DE PERFEIÇÃO','FORA DOS PARÂMETROS']
+];
+function showResults(){
+  const fb=$('finalBlock'); fb.style.display='block';
+  $('finalTitle').textContent='RESULTADOS:';
+  $('finalStats').innerHTML=STATS.map(s=>`<div><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
+  $('finalPoem').textContent='';
+  msgTimers.push(setTimeout(()=>{
+    $('finalTitle').textContent='CONCLUSÃO.';
+  },3600));
+  msgTimers.push(setTimeout(()=>{
+    $('finalTitle').textContent='ELA É ÚNICA. ❤️';
+  },5600));
+  msgTimers.push(setTimeout(()=>{
+    $('finalStats').innerHTML='';
+    $('finalPoem').classList.add('show');
+    $('finalPoem').textContent='Não foi possível encontrar nenhuma outra pessoa capaz de produzir os mesmos resultados.\n\nANÁLISE CONCLUÍDA.\n\nO universo possui bilhões de estrelas,\nincontáveis planetas\ne infinitas galáxias.\n\nMesmo assim...\n\nalgumas pessoas conseguem ser mais especiais\ndo que tudo isso junto.\n\n❤️';
+    triggerActivationEffect();
+  },7600));
+  msgTimers.push(setTimeout(startHeartBloomSequence,10500));
+}
+
+/* ---------------- HEART BLOOM: 150+ mensagens + formação do coração de flores ---------------- */
+function startHeartBloomSequence(){
+  $('finalBlock').style.display='none';
+  $('finalPoem').classList.remove('show');
+  spawnMsg('Uma nova camada de análise foi iniciada.',{center:true,life:2200});
+  msgTimers.push(setTimeout(()=>{
+    triggerHeartFormation();
+    runMsg2Queue();
+  },2400));
+}
+
+function runMsg2Queue(){
+  const seq=shuffle(MSG2);
+  let i=0;
+  function next(){
+    if(i<seq.length){
+      spawnMsg(seq[i]);
+      // sincronização: mensagens marcantes reagem na cena
+      if(i%14===0 && i>0){
+        heartLight.intensity=4.4; setTimeout(()=>{heartLight.intensity=2.2;},260);
+        const p=new THREE.Vector3(); heart.getWorldPosition(p);
+        flyCameraTo(()=>({pos:camera.position.clone().add(new THREE.Vector3((Math.random()-0.5)*4,(Math.random()-0.5)*2,(Math.random()-0.5)*3)),look:p}),1.4);
+      }
+      i++;
+      msgTimers.push(setTimeout(next,500));
+    } else {
+      msgTimers.push(setTimeout(heartBloomClimax,1200));
+    }
+  }
+  next();
+}
+
+function heartBloomClimax(){
+  layer.querySelectorAll('.msgNode').forEach(n=>{n.classList.add('fadeout'); setTimeout(()=>n.remove(),900);});
+  clearMsgTimers();
+  msgTimers.push(setTimeout(()=>{
+    // pulso simultâneo de todas as flores + onda de luz
+    heartLight.intensity=7; heartGlow.scale.set(30,30,1);
+    setTimeout(()=>{heartLight.intensity=2.2; heartGlow.scale.set(16,16,1);},380);
+    nebulaSprite('rgba(255,150,190,0.4)',0,6,4,220,.55);
+    const p=new THREE.Vector3(); heart.getWorldPosition(p);
+    flyCameraTo(()=>({pos:new THREE.Vector3(p.x+6,p.y+2,p.z+10), look:p}),2.4);
+  },400));
+  msgTimers.push(setTimeout(()=>{
+    spawnMsg('ANÁLISE FINALIZADA.',{center:true,life:2000});
+  },2800));
+  msgTimers.push(setTimeout(()=>{
+    spawnMsg('RESULTADO DEFINITIVO:',{center:true,life:2000});
+  },5000));
+  msgTimers.push(setTimeout(()=>{
+    spawnMsg('ELA É ÚNICA. ❤️',{center:true,life:2600});
+  },7200));
+  msgTimers.push(setTimeout(()=>{
+    spawnMsg('Depois de analisar 150+ parâmetros...',{center:true,life:2600});
+  },10000));
+  msgTimers.push(setTimeout(()=>{
+    spawnMsg('...o sistema chegou a uma conclusão impossível de contestar: ela é simplesmente maravilhosa.',{center:true,life:3600});
+    triggerFlowerDisperse();
+  },12800));
+  msgTimers.push(setTimeout(()=>{
+    spawnMsg('❤️ PARA ALGUÉM REALMENTE ESPECIAL ❤️',{center:true,life:4200});
+    const p=new THREE.Vector3(); heart.getWorldPosition(p);
+    flyCameraTo(()=>({pos:new THREE.Vector3(p.x+16,p.y+8,p.z+22), look:p}),3.6);
+  },17000));
+  msgTimers.push(setTimeout(()=>{ $('exitAnalysis').style.display='block'; },21500));
+}
+
+function triggerActivationEffect(){
+  // pulso forte + explosão suave de partículas + aurora
+  let burst=0;
+  const strong=setInterval(()=>{
+    burst++;
+    heartLight.intensity=6;
+    heartGlow.scale.set(26,26,1);
+    setTimeout(()=>{heartLight.intensity=2.2; heartGlow.scale.set(16,16,1);},260);
+    if(burst>=3) clearInterval(strong);
+  },420);
+  nebulaSprite('rgba(255,120,170,0.35)',0,10,10,260,.5);
+  buildHeartParticles(Math.min(1400,QCFG[QUALITY].heartP*2.4));
+}
+
+function endAnalysis(){
+  clearMsgTimers();
+  layer.innerHTML='';
+  layer.style.display='none';
+  resetFlowerField();
+  $('finalBlock').style.display='none';
+  $('finalPoem').classList.remove('show');
+  $('exitAnalysis').style.display='none';
+  $('skipBtn').style.display='none';
+  $('vignette').classList.remove('on');
+  $('hint').style.display='block';
+  planetMeshes.forEach(m=>fadeMaterial(m.material,1,1600));
+  orbitLines.forEach(l=>fadeOpacity(l.material,.35,1600));
+  fadeOpacity(starField.material,.85,1600);
+  buildHeartParticles(QCFG[QUALITY].heartP);
+  flyCameraTo(()=>({pos:new THREE.Vector3(0,60,150), look:new THREE.Vector3(0,0,0)}),2.2,()=>{
+    controls.target.set(0,0,0); controls.enabled=true; analysisActive=false;
+    $('stSys').textContent='OPERACIONAL';
+  });
+}
+$('exitAnalysis').onclick=endAnalysis;
+$('skipBtn').onclick=()=>{ clearMsgTimers(); layer.innerHTML=''; runFinale(); };
+
+/* ---------------- UI: botões gerais ---------------- */
+$('btnPause').onclick=e=>{ running=!running; e.target.textContent= running?'⏸ PAUSAR':'▶ CONTINUAR'; e.target.classList.toggle('active',!running); };
+$('btnReset').onclick=()=>{ location.reload(); };
+$('btnCine').onclick=e=>{ cinematic=!cinematic; e.target.classList.toggle('active',cinematic); };
+$('btnOverview').onclick=()=>{
+  if(analysisActive) return;
+  flyCameraTo(()=>({pos:new THREE.Vector3(0,60,150),look:new THREE.Vector3(0,0,0)}),1.6,()=>{controls.target.set(0,0,0);controls.enabled=true;});
+};
+$('speed').oninput=e=>{ timeSpeed=parseFloat(e.target.value); $('stSpeed').textContent=timeSpeed.toFixed(1)+'x'; };
+
+document.querySelectorAll('#quality .btn').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#quality .btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    QUALITY=parseInt(b.dataset.q);
+    applyQuality(); buildStars(QCFG[QUALITY].stars); buildHeartParticles(QCFG[QUALITY].heartP);
+    if(flowerStage==='idle') buildFlowerField(FLOWER_COUNTS[QUALITY]);
+    $('stQual').textContent=['BAIXO','MÉDIO','ALTO','ULTRA'][QUALITY];
+  };
+});
+
+/* auto-detect low-end mobile */
+if(isMobile){ QUALITY=1; document.querySelectorAll('#quality .btn').forEach(x=>x.classList.remove('active')); document.querySelector('#quality .btn[data-q="1"]').classList.add('active'); $('stQual').textContent='MÉDIO'; }
+applyQuality();
+
+/* ---------------- boot ---------------- */
+setTimeout(()=>{ $('boot').style.transition='opacity .6s'; $('boot').style.opacity='0'; setTimeout(()=>$('boot').style.display='none',600); },900);
+
+animate();
+})();
+</script>
+</body>
+</html>
